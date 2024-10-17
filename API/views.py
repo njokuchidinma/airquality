@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status,permissions
 from .serializers import CustomUserSerializer,SensorDataSerializer,CustomUser,SensorData, HealthTipSerializer, RiskAlertSerializer
 from .models import HealthTip, RiskAlert
+from .utils import return_quality_message
 from .aqicalc import calculate_general_aqi, calculate_health_condition
 from django.utils import timezone
 from datetime import timedelta
@@ -148,81 +149,69 @@ class RiskAlert(APIView):
         for risk in risk_elements:
             # Check for CO2 alerts
             if risk.element.lower() == "carbon dioxide":
-                if co2_level >= risk.threshold_bad:
-                    alerts.append({
-                        'title': f'BAD: {risk.element} Alert',
-                        'description': f"{co2_level} ppm levels detected. {risk.danger_message} Solution: {risk.solution_message}"
-                    })
-                elif co2_level >= risk.threshold_high:
-                    alerts.append({
-                        'title': f'WARNING: {risk.element} Alert',
-                        'description': f"{co2_level} ppm levels detected. {risk.danger_message} Solution: {risk.solution_message}"
-                    })
+                alerts.append(return_quality_message(
+                    co2_level,
+                    risk.element,
+                    risk.danger_message,
+                    risk.solution_message,
+                    risk.threshold_bad,
+                    risk.threshold_high
+                ))
 
             # Check for CO alerts
             elif risk.element.lower() == "carbon monoxide":
-                if co_level >= risk.threshold_bad:
-                    alerts.append({
-                        'title': f'BAD: {risk.element} Alert',
-                        'description': f"{co_level} ppm levels detected. {risk.danger_message} Solution: {risk.solution_message}"
-                    })
-                elif co_level >= risk.threshold_high:
-                    alerts.append({
-                        'title': f'WARNING: {risk.element} Alert',
-                        'description': f"{co_level} ppm levels detected. {risk.danger_message} Solution: {risk.solution_message}"
-                    })
+                alerts.append(return_quality_message(
+                    co2_level,
+                    risk.element,
+                    risk.danger_message,
+                    risk.solution_message,
+                    risk.threshold_bad,
+                    risk.threshold_high
+                ))
 
             # Check for LPG alerts
             elif risk.element.lower() == "lpg":
-                if lpg_level >= risk.threshold_bad:
-                    alerts.append({
-                        'title': f'BAD: {risk.element} Alert',
-                        'description': f"{lpg_level} ppm levels detected. {risk.danger_message} Solution: {risk.solution_message}"
-                    })
-                elif lpg_level >= risk.threshold_high:
-                    alerts.append({
-                        'title': f'WARNING: {risk.element} Alert',
-                        'description': f"{lpg_level} ppm levels detected. {risk.danger_message} Solution: {risk.solution_message}"
-                    })
+                alerts.append(return_quality_message(
+                    co2_level,
+                    risk.element,
+                    risk.danger_message,
+                    risk.solution_message,
+                    risk.threshold_bad,
+                    risk.threshold_high
+                ))
 
             # Check for smoke alerts
             elif risk.element.lower() == "smoke":
-                if smoke_level >= risk.threshold_bad:
-                    alerts.append({
-                        'title': f'BAD: {risk.element} Alert',
-                        'description': f"{smoke_level} ppm levels detected. {risk.danger_message} Solution: {risk.solution_message}"
-                    })
-                elif smoke_level >= risk.threshold_high:
-                    alerts.append({
-                        'title': f'WARNING: {risk.element} Alert',
-                        'description': f"{smoke_level} ppm levels detected. {risk.danger_message} Solution: {risk.solution_message}"
-                    })
+                alerts.append(return_quality_message(
+                    co2_level,
+                    risk.element,
+                    risk.danger_message,
+                    risk.solution_message,
+                    risk.threshold_bad,
+                    risk.threshold_high
+                ))
 
             # Check for humidity alerts
             elif risk.element.lower() == "humidity":
-                if humidity_level >= risk.threshold_bad:
-                    alerts.append({
-                        'title': f'BAD: {risk.element} Alert',
-                        'description': f"{humidity_level}% detected. {risk.danger_message} Solution: {risk.solution_message}"
-                    })
-                elif humidity_level >= risk.threshold_high:
-                    alerts.append({
-                        'title': f'WARNING: {risk.element} Alert',
-                        'description': f"{humidity_level}% detected. {risk.danger_message} Solution: {risk.solution_message}"
-                    })
+                alerts.append(return_quality_message(
+                    co2_level,
+                    risk.element,
+                    risk.danger_message,
+                    risk.solution_message,
+                    risk.threshold_bad,
+                    risk.threshold_high
+                ))
 
             # Check for temperature alerts
             elif risk.element.lower() == "temperature":
-                if temperature_level >= risk.threshold_bad:
-                    alerts.append({
-                        'title': f'BAD: {risk.element} Alert',
-                        'description': f"{temperature_level}°C detected. {risk.danger_message} Solution: {risk.solution_message}"
-                    })
-                elif temperature_level >= risk.threshold_high:
-                    alerts.append({
-                        'title': f'WARNING: {risk.element} Alert',
-                        'description': f"{temperature_level}°C detected. {risk.danger_message} Solution: {risk.solution_message}"
-                    })
+                alerts.append(return_quality_message(
+                    co2_level,
+                    risk.element,
+                    risk.danger_message,
+                    risk.solution_message,
+                    risk.threshold_bad,
+                    risk.threshold_high
+                ))
 
         # Return the list of alerts
         return Response(alerts)
