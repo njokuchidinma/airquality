@@ -38,18 +38,18 @@ SMOKE_BREAKPOINTS = [
     {"upper": 500.4, "lower": 350.5, "aqi_high": 500, "aqi_low": 401} # Hazardous
 ]
 
-def calculate_health_condition(aqihc):
-    if aqihc <= 50:
+def calculate_health_condition(aqi_value):
+    if aqi_value <= 50:
         return "Good"
-    elif aqihc <= 100:
+    elif aqi_value <= 100:
         return "Moderate"
-    elif aqihc <= 150:
+    elif aqi_value <= 150:
         return "Unhealthy for Sensitive Groups"
-    elif aqihc <= 200:
+    elif aqi_value <= 200:
         return "Unhealthy for Sensitive Groups"
-    elif aqihc <= 300:
+    elif aqi_value <= 300:
         return "Unhealthy"
-    elif aqihc <= 400:
+    elif aqi_value <= 400:
         return "Very Unhealthy"                 
     else:
         return "Hazardous"
@@ -64,9 +64,9 @@ def calculate_aqi_component(concentration, breakpoints):
 
 def calculate_general_aqi(data):
     # Extract sensor data from input
-    co_concentration = data["co"]
-    co2_concentration = data["co2"]
-    lpg_concentration = data["lpg"]
+    co_concentration = data["carbon_monoxide"]
+    co2_concentration = data["carbon_dioxide"]
+    lpg_concentration = data["lpg_gas"]
     smoke_concentration = data["smoke"]
 
     # Calculate AQI for each pollutant
@@ -75,12 +75,22 @@ def calculate_general_aqi(data):
     lpg_aqi = calculate_aqi_component(lpg_concentration, LPG_BREAKPOINTS)
     smoke_aqi = calculate_aqi_component(smoke_concentration, SMOKE_BREAKPOINTS)
 
+
+     # Print AQI values for debugging
+
+    print(f"Calculated AQI values: CO={co_aqi}, CO2={co2_aqi}, LPG={lpg_aqi}, Smoke={smoke_aqi}")
     # Aggregate AQI by taking the max value (worst case scenario)
     overall_aqi = max(co_aqi, co2_aqi, lpg_aqi, smoke_aqi)
+
     
+    # Calculate percentage based on the maximum AQI value of 500
+    aqi_percentage = (overall_aqi / 500) * 100
+    print(f"Overall AQI: {overall_aqi}, AQI Percentage: {aqi_percentage}")
+
     health_condition = calculate_health_condition(overall_aqi)
 
-    return overall_aqi, health_condition
+
+    return aqi_percentage, health_condition
 
 # # Example input data from sensor
 # sensor_data = {

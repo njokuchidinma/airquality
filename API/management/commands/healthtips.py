@@ -1,8 +1,6 @@
-# from django.core.management.base import BaseCommand
 from API.models import HealthTip
+from datetime import datetime
 
-# class Command(BaseCommand):
-#     help = 'Load health tips into the database'
 
 def load_health_tips():
     health_tips = [
@@ -48,6 +46,6 @@ def load_health_tips():
     ]
 
     for title, description in health_tips:
-        HealthTip.objects.get_or_create(title=title, description=description)
+        HealthTip.objects.get_or_create(title=title, description=description, timestamp=datetime.now())
 
     print("Health tips loaded successfully!")
