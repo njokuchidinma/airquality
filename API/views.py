@@ -1,8 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status,permissions
-from .serializers import CustomUserSerializer,SensorDataSerializer,CustomUser,SensorData, HealthTipSerializer, RiskAlertSerializer
-from .models import HealthTip, RiskAlert
+from .serializers import CustomUserSerializer,SensorDataSerializer,CustomUser,SensorData, HealthTipSerializer, RiskAlertSerializer, RiskAlert, HealthTip
 from .utils import return_quality_message
 from .aqicalc import calculate_general_aqi, calculate_health_condition
 from django.utils import timezone
@@ -20,77 +19,91 @@ class DataHandler(APIView):
         """ THIS IS THE ENDPOINT CALLS TO GET THE SENSOR DATA FROM THE SERVER """
         
         sensorData = self.queryset.filter(productID=request.user.productID).order_by("-timestamp").first()
-
         serializer = self.serializer_class(sensorData,many=False)
-
 
         return Response({"data":serializer.data},status=status.HTTP_200_OK)
     
-    # def post(self,request):
-    #     """ THIS IS THE ENDPOINT THE ESP32 SENDS THE SENSOR DATA TO """
 
+# class ModuleCalibrator(APIView):
+#     serializer_class = SensorDataSerializer
 
-    #     data = request.data
+#     """ THIS IS THE ENDPOINT USED TO CALIBRATE THE READINGS FROM ESP32 """
+#     def post(self,request):
+#         data = request.data
 
+#         serializer = self.serializer_class(data=data)
 
-    #     data["smoke"] = data["smoke"] *1000_000 - 200
+#         if serializer.is_valid():
+#             serializer.save()
 
-    #     serializer = self.serializer_class(data=data)
+#             aqi_percentage, health_condition = calculate_general_aqi(data)
 
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response({"data":"ok"},status=status.HTTP_200_OK)
-        
+#             # aqi = calculate_general_aqi(data)
+#             # health_condition = calculate_health_condition(aqi)
 
-    #     return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+#             if request.query_params.get('page') == 'home':
+#                 return Response({"general_aqi": aqi_percentage, "health_condition": health_condition}, status=status.HTTP_200_OK)
 
-    def post(self,request):
-        """ THIS IS THE ENDPOINT THE ESP32 SENDS THE SENSOR DATA TO """
-
+#             elif request.query_params.get('page') == 'statistics':
+#                 return Response({
+#                     "co": data.get("co"),
+#                     "co2": data.get("co2"),
+#                     "lpg": data.get("lpg"),
+#                     "smoke": data.get("smoke"),
+#                     "humidity": data.get("humidity", None),
+#                     "temperature": data.get("temperature", None),
+#                 }, status=status.HTTP_200_OK)
+#             return Response({"data":"ok"},status=status.HTTP_200_OK)
+#         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+    
+class ModuleCalibrator(APIView):
+    serializer_class = SensorDataSerializer
+    """ Endpoint to receive data from ESP32 and save it """
+    def post(self, request):
         data = request.data
 
-        # Validate and save the sensor data
         serializer = self.serializer_class(data=data)
 
         if serializer.is_valid():
             serializer.save()
+            return Response({"message": "Data saved successfully."}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # Calculate the overall AQI
-            aqi = calculate_general_aqi(data)
-            health_condition = calculate_health_condition(aqi)
+    """ Unified GET method to retrieve data based on query parameters """
+    def get(self, request):
+        page = request.query_params.get('page')
+        latest_data = self.get_latest_sensor_data()
+        if page == 'home':
+            aqi_percentage, health_condition = calculate_general_aqi(latest_data)
+            return Response({
+                "general_aqi": aqi_percentage,
+                "health_condition": health_condition
+            }, status=status.HTTP_200_OK)
+        elif page == 'statistics':
+            return Response({
+                "carbon_monoxide": latest_data.get("carbon_monoxide"),
+                "carbon_dioxide": latest_data.get("carbon_dioxide"),
+                "lpg_gas": latest_data.get("lpg_gas"),
+                "smoke": latest_data.get("smoke"),
+                "humidity": latest_data.get("humidity"),
+                "temperature": latest_data.get("temperature"),
+            }, status=status.HTTP_200_OK)
+        return Response({"error": "Invalid page parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Check the request context to decide which data to send (e.g., home page or statistics page)
-            if request.query_params.get('page') == 'home':
-                # Send general AQI result to the home page
-                return Response({"general_aqi": aqi, "health_condition": health_condition}, status=status.HTTP_200_OK)
-    
-            
-            elif request.query_params.get('page') == 'statistics':
-                # Send individual sensor data to the statistics page
-                return Response({
-                    "co": data["co"],
-                    "co2": data["co2"],
-                    "lpg": data["lpg"],
-                    "smoke": data["smoke"],
-                    "humidity": data.get("humidity", None),
-                    "temperature": data.get("temperature", None),
-                    # "general_aqi": aqi,
-                    # "health_condition": health_condition
-                    }, status=status.HTTP_200_OK)
-
-            return Response({"data": "ok"}, status=status.HTTP_200_OK)
-        return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
-        
-
-
-class ModuleCalibrator(APIView):
-
-    """ THIS IS THE ENDPOINT USED TO CALIBRATE THE READINGS FROM ESP32 """
-    def post(self,request):
-
-
-        return Response({"data":"ok"},status=status.HTTP_200_OK)
-    
+    def get_latest_sensor_data(self):
+        """Retrieve the latest sensor data from the database"""
+        try:
+            latest_data = SensorData.objects.latest('id')
+            return {
+                "carbon_monoxide": latest_data.carbon_monoxide,
+                "carbon_dioxide": latest_data.carbon_dioxide,
+                "lpg_gas": latest_data.lpg_gas,
+                "smoke": latest_data.smoke,
+                "humidity": latest_data.humidity,
+                "temperature": latest_data.temperature,
+            }
+        except SensorData.DoesNotExist:
+            return {}
 
 class UserProfile(APIView):
     """ THIS ENDPOINT IS USED TO GET/UPDATE USER INFO ON THE SERVER """
@@ -116,17 +129,28 @@ class UserProfile(APIView):
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
 
 
-class HealthTip(APIView):
+class HealthTips(APIView):
     queryset = HealthTip.objects.all()
     serializer_class = HealthTipSerializer
 
     def get_queryset(self):
         # Get current time and calculate the cutoff time for tips
         current_time = timezone.now()
-        cutoff_time = current_time - timedelta(minutes=30)
-        return self.queryset.filter(updated_at__gte=cutoff_time)
+        cutoff_time = current_time - timedelta(minutes=45)
+        return self.queryset.filter(timestamp__gte=cutoff_time)
     
-class RiskAlert(APIView):
+    def get(self, request):
+        queryset = self.get_queryset()
+
+        latest_tip = queryset.order_by('-timestamp').first()
+        previous_tips = queryset.exclude(id=latest_tip.id) if latest_tip else queryset.none()
+        response_data = {
+            'latest_tip': self.serializer_class(latest_tip).data if latest_tip else None,
+            'previous_tips': self.serializer_class(previous_tips, many=True).data
+        }
+        return Response(response_data)
+    
+class RiskAlerts(APIView):
     queryset = RiskAlert.objects.all()
     serializer_class = RiskAlertSerializer
 
@@ -172,7 +196,7 @@ class RiskAlert(APIView):
             # Check for LPG alerts
             elif risk.element.lower() == "lpg":
                 alerts.append(return_quality_message(
-                    co2_level,
+                    lpg_level,
                     risk.element,
                     risk.danger_message,
                     risk.solution_message,
@@ -183,7 +207,7 @@ class RiskAlert(APIView):
             # Check for smoke alerts
             elif risk.element.lower() == "smoke":
                 alerts.append(return_quality_message(
-                    co2_level,
+                    smoke_level,
                     risk.element,
                     risk.danger_message,
                     risk.solution_message,
@@ -194,7 +218,7 @@ class RiskAlert(APIView):
             # Check for humidity alerts
             elif risk.element.lower() == "humidity":
                 alerts.append(return_quality_message(
-                    co2_level,
+                    humidity_level,
                     risk.element,
                     risk.danger_message,
                     risk.solution_message,
@@ -205,7 +229,7 @@ class RiskAlert(APIView):
             # Check for temperature alerts
             elif risk.element.lower() == "temperature":
                 alerts.append(return_quality_message(
-                    co2_level,
+                    temperature_level,
                     risk.element,
                     risk.danger_message,
                     risk.solution_message,
