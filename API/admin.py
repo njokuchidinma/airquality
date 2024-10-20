@@ -61,12 +61,9 @@ class CustomUserAdmin(UserAdmin):
 
         return current_user
 
-
-
 @admin.register(SensorData)
 class SensorDataAdmin(admin.ModelAdmin):
     list_display = ["productID","smoke","alcohol","lpg_gas","humidity","temperature","carbon_dioxide","carbon_monoxide","timestamp"]
-
 
 @admin.register(HealthTip)
 class HealthTip(admin.ModelAdmin):
