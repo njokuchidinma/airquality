@@ -48,8 +48,6 @@ class CustomUser(AbstractBaseUser,PermissionsMixin):
     def has_module_perms(self, app_label):
         return app_label
 
-
-
 class SensorData(models.Model):
     """ THIS HOLDS THE RECORDS OF THE SENSOR DATA OVER TIME """
     smoke = models.FloatField(default = 0)
@@ -72,7 +70,6 @@ class RiskAlert(models.Model):
     danger_message = models.TextField()  # Danger message for this element
     solution_message = models.TextField()  # Solution message for this element
     timestamp = models.DateTimeField(auto_now_add=True,null=True)
-
 
 class HealthTip(models.Model):
     """ THIS HOLDS THE HEALTH TIPS OVER TIME """
