@@ -1,11 +1,15 @@
+from django.core.mail import send_mail
+from django.conf import settings
 from rest_framework.request import Request
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status,permissions
-from .serializers import CustomUserSerializer,SensorDataSerializer,CustomUser,SensorData, HealthTipSerializer, RiskAlertSerializer, RiskAlert, HealthTip
-from .utils import return_quality_message
-from .aqicalc import calculate_general_aqi
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.tokens import RefreshToken
+from .serializers import CustomUserSerializer,SensorDataSerializer,CustomUser,SensorData, ChangePasswordSerializer, ForgotPasswordSerializer, HealthTipSerializer, RiskAlertSerializer, RiskAlert, HealthTip
+from .utils import return_quality_message, generate_random_password
+from .aqicalc import calculate_general_aqi
+
 
 
 class Authenticate(APIView):
@@ -17,6 +21,7 @@ class Authenticate(APIView):
 
 class ReturnSensorData(APIView):
     serializer_class = SensorDataSerializer
+    permission_classes = [permissions.AllowAny]
 
     """ Unified GET method to retrieve data based on query parameters """
     def get(self, request):
@@ -55,8 +60,10 @@ class ReturnSensorData(APIView):
             return {}
 
 class ReceiveSensorData(APIView):
-    serializer_class = SensorDataSerializer
     """ THIS ENPOINT IS USED BY THE ESP32 MODULE TO SEND THE SENSOR DATA TO THE BACKEND """
+    serializer_class = SensorDataSerializer
+    permission_classes = [permissions.AllowAny]
+   
     def post(self, request):
         data = request.data
 
@@ -73,6 +80,7 @@ class UserProfile(APIView):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
     permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.AllowAny]
 
     def get(self,request):
         userSerializer = self.serializer_class(request.user).data
@@ -93,6 +101,7 @@ class UserProfile(APIView):
 class HealthTips(APIView):
     queryset = HealthTip.objects.all()
     serializer_class = HealthTipSerializer
+    permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
         # Get current time and calculate the cutoff time for tips
@@ -114,6 +123,7 @@ class HealthTips(APIView):
 class RiskAlerts(APIView):
     queryset = RiskAlert.objects.all()
     serializer_class = RiskAlertSerializer
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         alerts = []  # List to hold alerts
@@ -192,3 +202,79 @@ class RiskAlerts(APIView):
 
         # Return the list of alerts
         return Response([alert for alert in alerts if alert != None])
+    
+class ChangePassword(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ChangePasswordSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(
+            instance=request.user,
+            data=request.data,
+            context={'request': request}
+        )
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"message": "Password changed successfully"}, 
+                status=status.HTTP_200_OK
+            )
+        
+        return Response(
+            serializer.errors, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+class ForgotPassword(APIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = ForgotPasswordSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email_address')
+
+        if not email:
+            return Response({"error": "Email address is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user = CustomUser.objects.get(email_address=email)
+            new_password = generate_random_password()
+            try:
+                send_mail(
+                    'Password Reset for iBreatheEasy',
+                    f'Dear {user.email_address},\n\n'
+                    'We have received a request to reset your password for iBreatheEasy.\n\n'
+                    f'Your new password is: {new_password}\n\n'
+                    'Please use this password to log in to your account. We recommend that you change your password to something more secure as soon as possible.\n\n'
+                    'If you have any questions or concerns, please contact us at support@ibreatheasymain.com.\n\n'
+                    'Best regards,\n'
+                    'The iBreathEasy Team',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email]
+                )
+                user.set_password(new_password)
+                user.save()
+                return Response({"message": "New password sent to your email"}, status=status.HTTP_200_OK)
+            except Exception as e:
+                return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Email not found"}, status=status.HTTP_404_NOT_FOUND)
+
+class Logout(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            # Get the refresh token from the request body
+            refresh_token = request.data.get('refresh_token')
+            if not refresh_token:
+                return Response({"detail": "Refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Attempt to blacklist the token
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
+            return Response(status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

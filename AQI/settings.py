@@ -161,11 +161,6 @@ REST_FRAMEWORK = {
 
 
 
-
-
-
-
-
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
@@ -176,21 +171,17 @@ if DEBUG:
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# SMTP Server Configuration
+EMAIL_HOST = 'smtp.gmail.com'  # Replace with your email provider's SMTP server
+EMAIL_PORT = 465               # Port for TLS - 587
+EMAIL_USE_TLS = False          # Use TLS for secure connection
+EMAIL_USE_SSL = True           # Use SSL 
+#EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_USER = 'kimberlypeters301@gmail.com'
+EMAIL_HOST_PASSWORD = 'fbrorurozvpggcra' # Your email password or app-specific password
+DEFAULT_FROM_EMAIL = 'iBreathEasy <kimberlypeters301@gmail.com>'  # Default sender
 
 
 
