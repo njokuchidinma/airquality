@@ -14,7 +14,7 @@ from .serializers import (CustomUserSerializer,SensorDataSerializer,CustomUser,S
 from .utils import return_quality_message, generate_random_password,is_password_correct,custom_jwt_response_handler
 from .aqicalc import calculate_general_aqi
 
-from rest_framework.generics import CreateAPIView,RetrieveAPIView,UpdateAPIView,DestroyAPIView,ListCreateAPIView
+from rest_framework.generics import CreateAPIView
 
 
 class GenerateProductID(CreateAPIView):
@@ -64,6 +64,7 @@ class CreateNewuser(CreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED,headers=headers)
 
 class AuthenticateUser(APIView):
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         username = request.data.get("productID")
