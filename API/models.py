@@ -15,8 +15,8 @@ GENDER = [
 
 
 class CustomUser(AbstractBaseUser,PermissionsMixin):
-    full_name = models.CharField(max_length=255, blank=True)
-    email_address = models.EmailField(max_length=255,unique=True,blank=True)
+    full_name = models.CharField(max_length=255, blank=False)
+    email_address = models.EmailField(max_length=255,unique=True,blank=False)
     password = models.CharField(max_length=255)
     gender = models.CharField(max_length=13, choices=GENDER, default='FEMALE')
     country = models.CharField(max_length=255, blank=True)
@@ -29,7 +29,7 @@ class CustomUser(AbstractBaseUser,PermissionsMixin):
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'productID'
-    REQUIRED_FIELDS = ['full_name']
+    REQUIRED_FIELDS = ['email_address','full_name']
 
     def __str__(self):
         return self.email_address

@@ -1,32 +1,98 @@
 from django.core.mail import send_mail
 from django.conf import settings
+from django.shortcuts import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status,permissions
+from django.contrib.auth import authenticate
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import CustomUserSerializer,SensorDataSerializer,CustomUser,SensorData, ChangePasswordSerializer, ForgotPasswordSerializer, HealthTipSerializer, RiskAlertSerializer, RiskAlert, HealthTip
-from .utils import return_quality_message, generate_random_password
+from .serializers import (CustomUserSerializer,SensorDataSerializer,CustomUser,SensorData, 
+                          ChangePasswordSerializer, ForgotPasswordSerializer, HealthTipSerializer, 
+                          RiskAlertSerializer, RiskAlert, HealthTip, CreateCustomUserSerializer)
+from .utils import return_quality_message, generate_random_password,is_password_correct,custom_jwt_response_handler
 from .aqicalc import calculate_general_aqi
 
+from rest_framework.generics import CreateAPIView,RetrieveAPIView,UpdateAPIView,DestroyAPIView,ListCreateAPIView
 
 
-class Authenticate(APIView):
+class GenerateProductID(CreateAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = CreateCustomUserSerializer
+    permission_classes = [permissions.IsAdminUser]
 
-    def get(self, request: Request, *args, **kwargs) -> Response:
-        # return super().post(request, *args, **kwargs)
-        print(request.data)
-        return Response({"data": "ok"},status=status.HTTP_200_OK)
+    def post(self,request):
+        password = generate_random_password()
+        userData = {
+            "full_name": "John Doe",
+            "email_address": f"JohnDoe{password[:4]}@AQI.AQI",
+            "password":password,
+        }
+        serializer = self.get_serializer(data=userData)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        userData = {**userData,**serializer.data}
+
+
+        return Response({"status": "ok","data":userData}, status=status.HTTP_200_OK)
+
+
+class CreateNewuser(CreateAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = CustomUserSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        userData = request.data
+        product = CustomUser.objects.filter(productID__contains=userData["productID"])
+
+        if not product.exists():
+            return Response({"error": "Device With Product ID Not Found"}, status=status.HTTP_404_NOT_FOUND)
+
+        product = product.first()
+
+        # CHECK IF THE PRODUCT PASSWORD THE USER PROVIDED IS CORRECT
+        if not is_password_correct(product.productID,userData.get("password","")):
+            return Response({"error": "Wrong Prodcut Password"}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(product,data=userData)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED,headers=headers)
+
+class AuthenticateUser(APIView):
+
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        username = request.data.get("productID")
+        password = request.data.get("password")
+
+        myUser = CustomUser.objects.filter(productID__contains=username)
+
+        if myUser.exists():
+            myUser = myUser.first()
+
+            user = authenticate(request,username=myUser.productID,password=password)
+
+            if user is not None:
+                token = custom_jwt_response_handler(user)
+                return Response(token,status=status.HTTP_200_OK) 
+        return Response({"error": "Wrong Product ID and Password"}, status=status.HTTP_400_BAD_REQUEST)
 
 class ReturnSensorData(APIView):
     serializer_class = SensorDataSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     """ Unified GET method to retrieve data based on query parameters """
     def get(self, request):
         page = request.query_params.get('page')
         latest_data = self.get_latest_sensor_data()
+
+        if latest_data is None:
+            return Response({"error": "No sensor data available"}, status=status.HTTP_404_NOT_FOUND)
+
         if page == 'home':
             aqi_percentage, health_condition = calculate_general_aqi(latest_data)
             return Response({
@@ -46,8 +112,10 @@ class ReturnSensorData(APIView):
 
     def get_latest_sensor_data(self):
         """Retrieve the latest sensor data from the database"""
-        try:
-            latest_data = SensorData.objects.filter(productID=self.request.user).order_by('-timestamp').first()
+        latest_data = SensorData.objects.filter(productID=self.request.user)
+
+        if latest_data.exists():
+            latest_data = latest_data.order_by('-timestamp').first()
             return {
                 "carbon_monoxide": latest_data.carbon_monoxide,
                 "carbon_dioxide": latest_data.carbon_dioxide,
@@ -56,8 +124,8 @@ class ReturnSensorData(APIView):
                 "humidity": latest_data.humidity,
                 "temperature": latest_data.temperature,
             }
-        except SensorData.DoesNotExist:
-            return {}
+        else:
+            return None
 
 class ReceiveSensorData(APIView):
     """ THIS ENPOINT IS USED BY THE ESP32 MODULE TO SEND THE SENSOR DATA TO THE BACKEND """
@@ -67,11 +135,15 @@ class ReceiveSensorData(APIView):
     def post(self, request):
         data = request.data
 
-        serializer = self.serializer_class(data=data)
+        product = CustomUser.objects.filter(productID__contains=data.get("productID",None))
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Data saved successfully."}, status=status.HTTP_201_CREATED)
+        if product.exists():
+            product = product.first()
+            serializer = self.serializer_class(data=data,context={"productID":product})
+
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"message": "Data saved successfully."}, status=status.HTTP_201_CREATED)        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserProfile(APIView):

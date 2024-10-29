@@ -4,17 +4,43 @@ from rest_framework.exceptions import ValidationError
 
 
 
+class CreateCustomUserSerializer(ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ("full_name","email_address","productID","password")
+
+    def create(self, validated_data):
+        user = CustomUser(
+            full_name=validated_data["full_name"],
+            email_address=validated_data["email_address"]
+        )
+        user.set_password(validated_data["password"])
+        user.save()
+        return user
+    
+    def to_representation(self, instance):
+        user  = super().to_representation(instance)
+
+        del user["password"]
+        user["productID"] = instance.productID.hex[:8]
+        return user
+
+
 class CustomUserSerializer(ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ("full_name","email_address","gender","country","productID")
 
-        # fields = "__all__"
-
 class SensorDataSerializer(ModelSerializer):
     class Meta:
         model = SensorData
         fields = "__all__"
+
+    def create(self, validated_data):
+        user = self.context["productID"]
+        return SensorData.objects.create(productID=user,**validated_data)
+    
+
 
 class HealthTipSerializer(ModelSerializer):
     class Meta:
