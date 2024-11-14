@@ -29,15 +29,14 @@ LPG_BREAKPOINTS = [
 ]
 
 SMOKE_BREAKPOINTS = [
-    {"upper": 12, "lower": 0, "aqi_high": 50, "aqi_low": 0},          # Good
-    {"upper": 35.4, "lower": 12.1, "aqi_high": 100, "aqi_low": 51},   # Moderate
-    {"upper": 55.4, "lower": 35.5, "aqi_high": 150, "aqi_low": 101},  # Unhealthy for Sensitive Groups
-    {"upper": 150.4, "lower": 55.5, "aqi_high": 200, "aqi_low": 151}, # Unhealthy for Sensitive Groups
-    {"upper": 250.4, "lower": 150.5, "aqi_high": 300, "aqi_low": 201},# Unhealthy
-    {"upper": 350.4, "lower": 250.5, "aqi_high": 400, "aqi_low": 301},# Very Unhealthy
-    {"upper": 500.4, "lower": 350.5, "aqi_high": 500, "aqi_low": 401} # Hazardous
+    {"upper": 300, "lower": 0, "aqi_high": 50, "aqi_low": 0},           # Good
+    {"upper": 1000, "lower": 301, "aqi_high": 100, "aqi_low": 51},      # Moderate
+    {"upper": 1500, "lower": 1001, "aqi_high": 150, "aqi_low": 101},    # Unhealthy for Sensitive Groups
+    {"upper": 1750, "lower": 1501, "aqi_high": 200, "aqi_low": 151},    # Unhealthy
+    {"upper": 2000, "lower": 1751, "aqi_high": 300, "aqi_low": 201},    # Very Unhealthy
+    {"upper": 3000, "lower": 2001, "aqi_high": 400, "aqi_low": 301},    # Hazardous
+    {"upper": 5000, "lower": 3001, "aqi_high": 500, "aqi_low": 401}     # Extremely Hazardous
 ]
-
 def calculate_health_condition(aqi_value):
     if aqi_value <= 50:
         return "Good"

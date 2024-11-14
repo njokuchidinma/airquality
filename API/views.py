@@ -215,7 +215,8 @@ class RiskAlerts(APIView):
                     risk.danger_message,
                     risk.solution_message,
                     risk.threshold_bad,
-                    risk.threshold_high
+                    risk.threshold_high,
+                    risk.timestamp,
                 ))
 
             # Check for CO alerts
@@ -226,7 +227,8 @@ class RiskAlerts(APIView):
                     risk.danger_message,
                     risk.solution_message,
                     risk.threshold_bad,
-                    risk.threshold_high
+                    risk.threshold_high,
+                    risk.timestamp,
                 ))
 
             # Check for LPG alerts
@@ -237,7 +239,8 @@ class RiskAlerts(APIView):
                     risk.danger_message,
                     risk.solution_message,
                     risk.threshold_bad,
-                    risk.threshold_high
+                    risk.threshold_high,
+                    risk.timestamp,
                 ))
 
             # Check for smoke alerts
@@ -248,7 +251,8 @@ class RiskAlerts(APIView):
                     risk.danger_message,
                     risk.solution_message,
                     risk.threshold_bad,
-                    risk.threshold_high
+                    risk.threshold_high,
+                    risk.timestamp,
                 ))
 
             # Check for humidity alerts
@@ -259,7 +263,8 @@ class RiskAlerts(APIView):
                     risk.danger_message,
                     risk.solution_message,
                     risk.threshold_bad,
-                    risk.threshold_high
+                    risk.threshold_high,
+                    risk.timestamp,
                 ))
 
             # Check for temperature alerts
@@ -270,7 +275,8 @@ class RiskAlerts(APIView):
                     risk.danger_message,
                     risk.solution_message,
                     risk.threshold_bad,
-                    risk.threshold_high
+                    risk.threshold_high,
+                    risk.timestamp,
                 ))
 
         # Return the list of alerts
